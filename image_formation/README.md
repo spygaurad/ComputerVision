@@ -6,7 +6,7 @@
 - I unpadded the image and applied translation to move it to desired position.
 - These transformers are chained in python using lambda function.
 
-![Exercise 1 Output](output/geometric_transforms.png)
+![Exercise 1 Output](outputs/geometric_transforms.png)
 
 # Exercise 2
 
@@ -25,7 +25,7 @@ In the figure:
 - As the object distance 𝑧o approaches the focal length f from right, the required image distance zi increases rapidly and tends toward infinity — the curve becomes vertical at the dotted line
 - When the object is very far away (large 𝑧0), all curves flatten out near zi​≈f, meaning distant objects focus at approximately the focal length.
 
-![Exercise 2 Task 1 Output](output/thin_lens_law.png)
+![Exercise 2 Task 1 Output](outputs/thin_lens_law.png)
 
 ### Task 2:
 
@@ -38,7 +38,7 @@ a)
 - For any given f-number, D=f/N — so longer lenses require physically wider apertures to maintain the same f-number.
 - Lower f-numbers (like f/1.4) have steeper slopes, meaning they need much larger diameters than higher f-numbers (like f/4) at the same focal length.
 
-![Exercise 2 Task 2a Output](output/aperture_d_vs_focal_length.png)
+![Exercise 2 Task 2a Output](outputs/aperture_d_vs_focal_length.png)
 
 b)
 Maximum aperture diameters (D = f / N)
@@ -52,9 +52,9 @@ Maximum aperture diameters (D = f / N)
 
 - Issue in question, the n in quantize section should be n=2^num_bits. We have 8 levels, not just 3.
 
-![Exercise 3 Output1](output/sampled_q3_sig_freq_8.png)
-![Exercise 3 Output2](output/sampled_q8_sig_freq_10.png)
-![Exercise 3 Output3](output/sampled_q8_sig_freq_30.png)
+![Exercise 3 Output1](outputs/sampled_q3_sig_freq_8.png)
+![Exercise 3 Output2](outputs/sampled_q8_sig_freq_10.png)
+![Exercise 3 Output3](outputs/sampled_q8_sig_freq_30.png)
 
 What do you think a reasonable sampling frequency should be to capture the true shape of the
 signal? What should be done to minimize error?
@@ -66,7 +66,7 @@ signal? What should be done to minimize error?
 
 # Exercise 4
 
-![Exercise 4 Output](output/noise_sampled_q3_sig_freq_8.png)
+![Exercise 4 Output](outputs/noise_sampled_q3_sig_freq_8.png)
 
 The orange dots are the sampled values after noise is added — they scatter above or below where they should be, showing random deviations from the true signal.
 
