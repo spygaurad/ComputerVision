@@ -81,3 +81,4 @@ Noise: mean=0.0, std_dev=0.1 (scaled by signal magnitude)
 --- Error vs CLEAN SAMPLES ---  
 Noisy samples: MSE=0.044593 RMSE=0.211171 PSNR=13.51 dB  
 Quantized (noisy): MSE=0.060225 RMSE=0.245407 PSNR=12.20 dB
+
