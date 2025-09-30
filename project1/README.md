@@ -165,20 +165,13 @@ Implement real-time convolution filters on webcam feed using custom convolution 
 
 ---
 
-### Sample Filter Results
-
-- ![bright_blobs Gaussian](./outputs/out_conv/bright_blobs_gaussian.png)
-- ![bright_blobs Emboss](./outputs/out_conv/bright_blobs_emboss.png)
-- ![bright_blobs Sobel Vertical](./outputs/out_conv/bright_blobs_sobel_vertical.png)
-- ![room Sobel Horizontal](./outputs/out_conv/room_sobel_horizontal.png)
-- ![room Sobel Vertical](./outputs/out_conv/room_sobel_vertical.png)
-
 ---
 
 ### Observations by Filter
 
 #### 1. Gaussian Filter
 
+![bright_blobs Gaussian](./outputs/out_conv/bright_blobs_gaussian.png)
 a. Smoothed intensity variations.  
 b. Output appeared softer with reduced sharp edges.  
 c. Noise and fine details were suppressed.  
@@ -188,6 +181,7 @@ d. **Why:** Gaussian gives high weight to the center pixel and smaller weights t
 
 #### 2. Emboss Filter
 
+![bright_blobs Emboss](./outputs/out_conv/bright_blobs_emboss.png)
 a. Produced a 3D-like raised effect on blobs.  
 b. Shadows appeared along edges, enhancing depth.  
 c. Flat smooth areas gained artificial texture.  
@@ -197,18 +191,10 @@ d. **Why:** Negative weights on one side + positive weights on the other create 
 
 #### 3. Sobel Vertical Filter
 
+![room Sobel Vertical](./outputs/out_conv/room_sobel_vertical.png)
 a. Detected vertical edges.  
 b. Highlighted vertical structures (door frames, curtains).  
-c. Captured change along **x-axis** (differences between left and right neighbors).  
-d. **Kernel values:**
-
-\[
-\begin{bmatrix}
--1 & 0 & 1 \\
--2 & 0 & 2 \\
--1 & 0 & 1
-\end{bmatrix}
-\]
+c. Captured change along **x-axis** (differences between left and right neighbors).
 
 Subtracts left neighbors from right neighbors → vertical edges pop out.
 
@@ -216,17 +202,9 @@ Subtracts left neighbors from right neighbors → vertical edges pop out.
 
 #### 4. Sobel Horizontal Filter
 
+![room Sobel Horizontal](./outputs/out_conv/room_sobel_horizontal.png)
 a. Detected horizontal edges.  
-b. Captured change along **y-axis** (differences between top and bottom neighbors).  
-c. **Kernel values:**
-
-\[
-\begin{bmatrix}
--1 & -2 & -1 \\
-0 & 0 & 0 \\
-1 & 2 & 1
-\end{bmatrix}
-\]
+b. Captured change along **y-axis** (differences between top and bottom neighbors).
 
 Subtracts top neighbors from bottom neighbors → horizontal edges pop out.
 
