@@ -73,6 +73,6 @@ The image below visualizes the top 50 matches between the original and the trans
 
 To demonstrate SIFT's effectiveness in a real-world scenario, the same process was applied to two photographs of a Jenga tower taken from different perspectives. The SIFT detector was tuned to better identify features on the wooden blocks.
 
-The visualization below shows the top 50 matches found between the two images. SIFT is able to robustly match features on the individual blocks, demonstrating its invariance to changes in viewpoint.
+The visualization below shows the top 50 matches found between the two images. We can observe that with small tuning, SIFT is able to match most of the features on the jenga blocks, demonstrating its invariance to changes in viewpoint.
 
 ![Top 50 SIFT Matches on Jenga Images](outputs/sift_matched_jenga.png)
