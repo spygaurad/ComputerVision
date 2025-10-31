@@ -69,7 +69,7 @@ The image below visualizes the top 50 matches between the original and the trans
 
 ![Top 50 SIFT Matches on Blob Image](outputs/sift_matched_blob.png)
 
-## Part 5: SIFT Matching with Custom Images (Grad Only)
+## Part 5: SIFT Matching with Custom Images
 
 To demonstrate SIFT's effectiveness in a real-world scenario, the same process was applied to two photographs of a Jenga tower taken from different perspectives. The SIFT detector was tuned to better identify features on the wooden blocks.
 
