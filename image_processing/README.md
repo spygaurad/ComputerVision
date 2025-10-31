@@ -24,7 +24,7 @@ This repository implements fundamental image processing techniques including int
 
 ### Analysis Results
 
-Contrast stretching linearly spreads the intensity values across the full range, while histogram equalization redistributes pixel intensities based on the cumulative distribution function. Histogram equalization typically produces better contrast enhancement, especially for images with concentrated intensity distributions.
+Contrast stretching linearly spreads the intensity values across the full range, while histogram equalization redistributes pixel intensities based on the cumulative distribution function. Histogram equalization typically produces better contrast enhancement, especially for images with concentrated intensity distributions. Additionally, histogram equalization is non linear and can sometimes increase the contrast for unwanted details in low level intensities.
 
 ## Exercise 2: Non-Linear Filtering and Edge Detection
 
@@ -49,7 +49,6 @@ Applies median filter to remove salt-and-pepper noise.
 
 ```python
 from median_filter import median_filter
-
 filtered = median_filter(noisy_img, size=5)
 ```
 
@@ -67,7 +66,6 @@ Calculates gradient magnitude and direction using Sobel operators.
 
 ```python
 from calculate_gradient import calculate_gradient
-
 magnitude, angle = calculate_gradient(img)
 ```
 
@@ -81,11 +79,10 @@ magnitude, angle = calculate_gradient(img)
 **Answer:**
 Median filtering significantly improves gradient magnitude calculation on noisy images:
 
-1. **Without filtering:** Salt-and-pepper noise creates high-magnitude gradients at noise locations, resulting in a noisy gradient map with false edges.
-
-2. **With filtering:** The median filter effectively removes impulse noise while preserving edges, producing a cleaner gradient map that accurately represents true image edges.
-
-3. **Quantitative improvement:** The filtered gradient map has lower variance and more closely matches the gradient of the original clean image.
+1. Salt-and-pepper noise creates high-magnitude gradients at noise locations, resulting in a noisy gradient map with false edges.
+2. Median filter being an order statistic, does not depend on the outliers values caused by the salt and pepper noise.
+3. The median filter effectively removes impulse noise while preserving edges, producing a cleaner gradient map that accurately represents true image edges.
+4. The filtered gradient map has lower variance and more closely matches the gradient of the original clean image.
 
 ## Exercise 3: Simple Sobel-based Edge Detector
 
@@ -111,7 +108,6 @@ Applies Sobel edge detection with binary thresholding.
 
 ```python
 from sobel_edge_detector import sobel_edge_detector
-
 edges = sobel_edge_detector(img, threshold=50)
 ```
 
