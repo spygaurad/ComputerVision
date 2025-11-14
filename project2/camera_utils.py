@@ -2,11 +2,8 @@ import cv2
 import numpy as np
 from pathlib import Path
 from typing import List, Tuple
-import cv2
-import numpy as np
-from typing import Tuple
-from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
+import os
 
 def calibrate_camera_from_chessboard(
     image_paths: List[str],
@@ -453,109 +450,158 @@ def draw_chess_piece_on_chessboard(
     return img_out, rvec, tvec
 
 
-def estimate_relative_pose(
-    img1: np.ndarray,
-    img2: np.ndarray,
-    K: np.ndarray,
-    use_orb: bool = True,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """
-    Estimate the relative pose (R, T) between two camera positions using
-    feature matching + 8-point algorithm, as described in the assignment.
 
-    Steps
-    -----
-    1. Detect and describe keypoints in both images (ORB by default).
-    2. Match descriptors and apply Lowe's ratio test.
-    3. Compute the Fundamental matrix F with the 8-point algorithm:
-       F = findFundamentalMat(pts1, pts2, FM_RANSAC).
-    4. Convert F to the Essential matrix E using intrinsics K:
-       E = Kᵀ F K.
-    5. Decompose E with recoverPose(E, pts1, pts2, K) to obtain R, T.
+
+def stitch_two_images(img1, img2, ratio_thresh=0.75, reproj_thresh=4.0):
+    """
+    Stitch two overlapping images into a single panorama.
 
     Parameters
     ----------
-    img1, img2 : np.ndarray
-        Two grayscale or BGR images taken from different, static camera poses.
-    K : np.ndarray, shape (3, 3)
-        Camera intrinsic matrix from calibration.
-    use_orb : bool, default True
-        If True, uses ORB (fast, free). If False, uses SIFT (if available).
+    img1 : np.ndarray
+        First image (e.g., left image), BGR or RGB as read by cv2.
+    img2 : np.ndarray
+        Second image (e.g., right image), BGR or RGB as read by cv2.
+    ratio_thresh : float, optional
+        Lowe's ratio threshold for filtering matches (default 0.75).
+    reproj_thresh : float, optional
+        RANSAC reprojection threshold for homography estimation.
 
     Returns
     -------
-    F : np.ndarray, shape (3, 3)
-        Fundamental matrix.
-    E : np.ndarray, shape (3, 3)
-        Essential matrix.
-    R : np.ndarray, shape (3, 3)
-        Relative rotation from camera 1 to camera 2.
-    t : np.ndarray, shape (3, 1)
-        Relative translation direction from camera 1 to camera 2 (scale unknown).
-    inlier_mask : np.ndarray, shape (N, 1)
-        Mask of inlier matches used for F and pose estimation.
+    panorama : np.ndarray
+        The stitched panorama image (same color format as input).
     """
-    # --- Ensure grayscale ---
-    if img1.ndim == 3:
-        gray1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
-    else:
-        gray1 = img1.copy()
 
-    if img2.ndim == 3:
-        gray2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
-    else:
-        gray2 = img2.copy()
+    # --- 1. Convert to grayscale for feature detection ---
+    gray1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY) if img1.ndim == 3 else img1
+    gray2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY) if img2.ndim == 3 else img2
 
-    # --- 1. Detect and describe features ---
-    if use_orb:
-        detector = cv2.ORB_create(nfeatures=2000)
-        norm_type = cv2.NORM_HAMMING
-    else:
-        detector = cv2.SIFT_create()
-        norm_type = cv2.NORM_L2
+    # --- 2. Detect keypoints + descriptors with ORB ---
+    orb = cv2.ORB_create(5000)
+    kp1, des1 = orb.detectAndCompute(gray1, None)
+    kp2, des2 = orb.detectAndCompute(gray2, None)
 
-    kpts1, desc1 = detector.detectAndCompute(gray1, None)
-    kpts2, desc2 = detector.detectAndCompute(gray2, None)
+    if des1 is None or des2 is None:
+        raise ValueError("Could not find enough features in one of the images.")
 
-    if desc1 is None or desc2 is None or len(kpts1) < 8 or len(kpts2) < 8:
-        raise RuntimeError("Not enough features found in one or both images.")
+    # --- 3. Match descriptors using Brute-Force + Hamming distance ---
+    bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
+    matches = bf.knnMatch(des1, des2, k=2)
 
-    # --- 2. Match descriptors + Lowe's ratio test ---
-    bf = cv2.BFMatcher(norm_type, crossCheck=False)
-    raw_matches = bf.knnMatch(desc1, desc2, k=2)
-
+    # --- 4. Apply Lowe's ratio test to keep only good matches ---
     good_matches = []
-    for m, n in raw_matches:
-        if m.distance < 0.75 * n.distance:
+    for m, n in matches:
+        if m.distance < ratio_thresh * n.distance:
             good_matches.append(m)
 
-    if len(good_matches) < 8:
-        raise RuntimeError(f"Not enough good matches for 8-point algorithm "
-                           f"({len(good_matches)} found).")
+    if len(good_matches) < 4:
+        raise ValueError(
+            f"Not enough good matches ({len(good_matches)}) to compute homography."
+        )
 
-    pts1 = np.float32([kpts1[m.queryIdx].pt for m in good_matches])
-    pts2 = np.float32([kpts2[m.trainIdx].pt for m in good_matches])
+    # --- 5. Extract matched keypoints and compute Homography with RANSAC ---
+    src_pts = np.float32([kp1[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
+    dst_pts = np.float32([kp2[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
 
-    # --- 3. Fundamental matrix F using 8-point + RANSAC ---
-    # FM_RANSAC uses 8-point internally with robust outlier rejection.
-    F, inlier_mask = cv2.findFundamentalMat(
-        pts1, pts2,
-        method=cv2.FM_RANSAC,
-        ransacReprojThreshold=1.0,
-        confidence=0.999
+    H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, reproj_thresh)
+    if H is None:
+        raise ValueError("Homography computation failed.")
+
+    # --- 6. Compute size of the output canvas (handle negative coords) ---
+    h1, w1 = img1.shape[:2]
+    h2, w2 = img2.shape[:2]
+
+    # Corners of img1 in its own coordinate system
+    corners_img1 = np.float32(
+        [[0, 0], [w1, 0], [w1, h1], [0, h1]]
+    ).reshape(-1, 1, 2)
+    # Warp them into img2's coordinate system
+    warped_corners_img1 = cv2.perspectiveTransform(corners_img1, H)
+
+    # Corners of img2 (already in its own coordinate system)
+    corners_img2 = np.float32(
+        [[0, 0], [w2, 0], [w2, h2], [0, h2]]
+    ).reshape(-1, 1, 2)
+
+    # Combine all corners to find overall bounds
+    all_corners = np.concatenate((warped_corners_img1, corners_img2), axis=0)
+
+    [xmin, ymin] = np.int32(all_corners.min(axis=0).ravel() - 0.5)
+    [xmax, ymax] = np.int32(all_corners.max(axis=0).ravel() + 0.5)
+
+    # Translation to shift everything so minimum coords are at (0, 0)
+    translation = [-xmin, -ymin]
+    T = np.array(
+        [[1, 0, translation[0]],
+         [0, 1, translation[1]],
+         [0, 0, 1]],
+        dtype=np.float64,
     )
 
-    if F is None or F.shape != (3, 3):
-        raise RuntimeError("Failed to compute a valid Fundamental matrix F.")
+    # H_translated = T @ H     # Final homography with translation
 
-    inliers1 = pts1[inlier_mask.ravel() == 1]
-    inliers2 = pts2[inlier_mask.ravel() == 1]
 
-    # --- 4. Essential matrix E = Kᵀ F K ---
-    E = K.T @ F @ K
+    # --- 7. Warp img1 using the composed homography (T * H) ---
+    pano_width = xmax - xmin
+    pano_height = ymax - ymin
 
-    # --- 5. Decompose E to get (R, T) ---
-    # recoverPose expects normalized image coordinates (pixel coords + K).
-    _, R, t, pose_mask = cv2.recoverPose(E, inliers1, inliers2, K)
+    panorama = cv2.warpPerspective(img1, T @ H, (pano_width, pano_height))
 
-    return F, E, R, t, inlier_mask, pts1, pts2
+    # --- 8. Paste img2 into the panorama at the translated location ---
+    x_offset, y_offset = translation
+    panorama[y_offset:y_offset + h2, x_offset:x_offset + w2] = img2
+
+    return panorama, H
+
+
+def show_and_save_stitch(img1, img2, stitched, output_path):
+    """
+    Plot the two input images and the final stitched image side-by-side
+    and save the figure to the given output path.
+
+    Parameters
+    ----------
+    img1 : np.ndarray
+        First image (BGR as from cv2.imread).
+    img2 : np.ndarray
+        Second image (BGR as from cv2.imread).
+    stitched : np.ndarray
+        Stitched panorama image (BGR).
+    output_path : str
+        Path to save the resulting figure (e.g., 'results/stitched.png').
+    """
+
+    # Ensure output directory exists
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+    # Convert BGR (OpenCV default) to RGB for matplotlib
+    def bgr_to_rgb(img):
+        return cv2.cvtColor(img, cv2.COLOR_BGR2RGB) if img.ndim == 3 else img
+
+    img1_rgb = bgr_to_rgb(img1)
+    img2_rgb = bgr_to_rgb(img2)
+    stitched_rgb = bgr_to_rgb(stitched)
+
+    # Create figure with 3 subplots
+    plt.figure(figsize=(15, 5))
+
+    plt.subplot(1, 3, 1)
+    plt.imshow(img1_rgb)
+    plt.title("Image 1")
+    plt.axis("off")
+
+    plt.subplot(1, 3, 2)
+    plt.imshow(img2_rgb)
+    plt.title("Image 2")
+    plt.axis("off")
+
+    plt.subplot(1, 3, 3)
+    plt.imshow(stitched_rgb)
+    plt.title("Stitched Panorama")
+    plt.axis("off")
+
+    plt.tight_layout()
+    plt.savefig(output_path, bbox_inches="tight", dpi=200)
+    plt.close()
+

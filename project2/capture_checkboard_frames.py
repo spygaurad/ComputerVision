@@ -6,7 +6,7 @@ from pathlib import Path
 PATTERN_SIZE = (8, 6)          # 9x7 squares -> 8x6 inner corners = 48
 NEEDED_CORNERS = PATTERN_SIZE[0] * PATTERN_SIZE[1]  # 48
 TOTAL_TO_SAVE = 30             # stop after saving this many frames
-SAVE_DIR = Path("images")    # folder to store images
+SAVE_DIR = Path("images/stitching")    # folder to store images
 CAM_INDEX = 0                  # change to 1 if you have multiple cameras
 # ----------------
 

@@ -2,7 +2,7 @@ import cv2
 from camera_utils import calibrate_camera_from_chessboard, draw_cube_on_chessboard
 import numpy as np
 from glob import glob
-from calibration_preprocessing import get_intrinsic_parameters
+from project2.phase1_calibration_preprocessing import get_intrinsic_parameters
 
 rms, K, dist = get_intrinsic_parameters()
 

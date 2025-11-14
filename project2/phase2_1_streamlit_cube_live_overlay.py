@@ -12,7 +12,7 @@ import os
 from datetime import datetime
 
 from camera_utils import draw_cube_on_chessboard
-from calibration_preprocessing import get_intrinsic_parameters
+from project2.phase1_calibration_preprocessing import get_intrinsic_parameters
 
 
 # ---------------------------------------------------------
