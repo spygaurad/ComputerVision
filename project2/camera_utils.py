@@ -41,29 +41,27 @@ def calibrate_camera_from_chessboard(
         Translation vectors for each input view (extrinsics).
     """
 
-    # --- 1. Prepare the known 3D coordinates of chessboard corners in the pattern frame ---
-    # pattern_size = (num_corners_x, num_corners_y)
     num_corners_x, num_corners_y = pattern_size
 
-    # Create one template of 3D points for the chessboard (z = 0)
+    # Template 3D points for the chessboard (z = 0 plane in board frame)
     objp = np.zeros((num_corners_x * num_corners_y, 3), np.float32)
     objp[:, :2] = np.mgrid[0:num_corners_x, 0:num_corners_y].T.reshape(-1, 2)
     objp *= square_size  # scale by the physical square size
 
-    # Lists to store 3D points (in world coords) and 2D points (in image coords) for all images
-    objpoints = []  # 3D points
-    imgpoints = []  # 2D points
+    
+    objpoints = []  # 3D points in board coordinates
+    imgpoints = []  # 2D detected corner in image coordinates
 
     img_size = None
 
-    # Criteria for refining corner locations (sub-pixel accuracy)
+    # Corner refinement criteria (sub-pixel accuracy)
     criteria = (
         cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER,
         30,
         1e-6,
     )
 
-    # --- 2. Loop over images and detect chessboard corners ---
+    # Detect Chessboard corners in each image
     for path in image_paths:
         img = cv2.imread(str(path))
         if img is None:
@@ -74,7 +72,7 @@ def calibrate_camera_from_chessboard(
         if img_size is None:
             img_size = (gray.shape[1], gray.shape[0])  # (width, height)
 
-        # Try to find the chessboard corners
+        # Find the chessboard corners
         ret, corners = cv2.findChessboardCorners(gray, pattern_size, None)
 
         if not ret:
@@ -105,10 +103,9 @@ def calibrate_camera_from_chessboard(
     if len(objpoints) < 3:
         raise RuntimeError(
             f"Not enough valid chessboard detections ({len(objpoints)}). "
-            "Make sure you have good views (15–20 recommended)."
         )
 
-    # --- 3. Calibrate the camera ---
+    # Global camera calibration over all views
     # This returns: rms_error, K, dist, rvecs, tvecs
     retval, camera_matrix, dist_coeffs, rvecs, tvecs = cv2.calibrateCamera(
         objpoints,
@@ -178,11 +175,12 @@ def draw_cube_on_chessboard(
     square_size: float,
 ):
     """
-    Phase 2 option: Calibrated Augmented Reality.
+    Calibrated Augmented Reality.
 
     Uses the calibrated intrinsics (K) and a known chessboard pattern
     to estimate the camera pose (R, T) with cv2.solvePnP, then overlays
     a virtual 3D cube on top of the board.
+
 
     Parameters
     ----------
@@ -211,7 +209,7 @@ def draw_cube_on_chessboard(
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     cols, rows = pattern_size
 
-    # --- 1. Detect chessboard corners in the image ---
+    # Detect chessboard corners in the image 
     ret, corners = cv2.findChessboardCorners(gray, pattern_size)
     if not ret:
         raise RuntimeError("Chessboard could not be found in the image.")
@@ -230,12 +228,12 @@ def draw_cube_on_chessboard(
         criteria=criteria,
     )
 
-    # --- 2. Prepare 3D object points for the chessboard plane (z = 0) ---
+    # Prepare 3D object points for the chessboard plane 
     objp = np.zeros((rows * cols, 3), np.float32)
     objp[:, :2] = np.mgrid[0:cols, 0:rows].T.reshape(-1, 2)
     objp *= square_size  # scale by physical size
 
-    # --- 3. Estimate pose with solvePnP (gives R, T) ---
+    # Estimate pose with solvePnP (gives R, T) 
     ret, rvec, tvec = cv2.solvePnP(
         objp,
         corners_refined,
@@ -246,7 +244,7 @@ def draw_cube_on_chessboard(
     if not ret:
         raise RuntimeError("solvePnP failed to estimate camera pose.")
 
-    # --- 4. Define a cube in 3D anchored on the chessboard ---
+    # Defining a cube in 3D anchored on the chessboard
     # Cube base: same size as a 2×2 square region on the board.
     s = square_size
     cube_pts_3d = np.float32([
@@ -260,7 +258,7 @@ def draw_cube_on_chessboard(
         [0, 2*s,  -2*s],
     ])
 
-    # --- 5. Project 3D cube vertices to the image ---
+    # Project 3D cube vertices to the image
     imgpts, _ = cv2.projectPoints(
         cube_pts_3d, rvec, tvec, camera_matrix, dist_coeffs
     )
@@ -286,10 +284,6 @@ def draw_cube_on_chessboard(
         cv2.line(img_out, tuple(b), tuple(t), (255, 0, 0), 2)
 
     return img_out, rvec, tvec
-
-import cv2
-import numpy as np
-from typing import Tuple
 
 
 def draw_chess_piece_on_chessboard(
@@ -363,13 +357,13 @@ def draw_chess_piece_on_chessboard(
         criteria=criteria,
     )
 
-    # --- 2. Prepare 3D object points for the chessboard plane (z = 0) ---
+    # Prepare 3D object points for the chessboard plane (z = 0)
     # One 3D point per inner corner.
     objp = np.zeros((rows * cols, 3), np.float32)
     objp[:, :2] = np.mgrid[0:cols, 0:rows].T.reshape(-1, 2)
     objp *= square_size
 
-    # --- 3. Estimate pose with solvePnP ---
+    # Estimate pose with solvePnP
     ok, rvec, tvec = cv2.solvePnP(
         objp,
         corners_refined,
@@ -380,17 +374,17 @@ def draw_chess_piece_on_chessboard(
     if not ok:
         raise RuntimeError("solvePnP failed to estimate camera pose.")
 
-    # --- 4. Define the 3D quad corresponding to the chosen 1x1 square ---
+    # Defining the 3D quad corresponding to the chosen 1x1 square
     # Number of actual squares = (cols-1) x (rows-1)
     num_squares_x = cols - 1
     num_squares_y = rows - 1
 
-    # Clamp so we don't go out-of-bounds
+    # Clamping so we don't go out-of-bounds
     square_x = int(np.clip(square_x, 0, num_squares_x - 1))
     square_y = int(np.clip(square_y, 0, num_squares_y - 1))
 
     s = square_size
-    # Four corners of that square on the board (z=0 plane)
+    # Four corners of the square on the board (z=0 plane)
     # (x,y) in board coordinates
     square_pts_3d = np.float32([
         [square_x * s,         square_y * s,         0.0],  # top-left
@@ -399,7 +393,7 @@ def draw_chess_piece_on_chessboard(
         [square_x * s,         (square_y + 1) * s,   0.0],  # bottom-left
     ])
 
-    # --- 5. Project these 3D square corners into the image ---
+    # Projecting these 3D square corners into the image
     imgpts, _ = cv2.projectPoints(
         square_pts_3d,
         rvec,
@@ -409,7 +403,7 @@ def draw_chess_piece_on_chessboard(
     )
     dst_quad = imgpts.reshape(-1, 2).astype(np.float32)  # (4,2)
 
-    # --- 6. Prepare the chess piece image and alpha ---
+    # Prepare the chess piece image and alpha
     if piece_rgba.shape[2] == 4:
         piece_bgr = piece_rgba[:, :, :3]
         piece_alpha = piece_rgba[:, :, 3]
@@ -427,7 +421,7 @@ def draw_chess_piece_on_chessboard(
         [0,        h_piece],   # bottom-left
     ])
 
-    # --- 7. Compute homography and warp piece & alpha to the board square ---
+    # Compute homography and warp piece & alpha to the board square
     H, _ = cv2.findHomography(src_quad, dst_quad)
     if H is None:
         raise RuntimeError("Homography for chess piece overlay failed.")
@@ -443,7 +437,7 @@ def draw_chess_piece_on_chessboard(
     img_out = img.copy().astype(np.float32)
     warped_piece_f = warped_piece.astype(np.float32)
 
-    # --- 8. Alpha blend onto the board ---
+    # Alpha blend onto the board
     img_out = alpha_f * warped_piece_f + (1.0 - alpha_f) * img_out
     img_out = np.clip(img_out, 0, 255).astype(np.uint8)
 
