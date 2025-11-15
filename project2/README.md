@@ -1,5 +1,13 @@
 # Project 2: Geometric Applications of Calibrated Monocular Vision
 
+## Contributors:
+
+- Suraj Prasai
+- Alejandro Gonzalez Rubio Abdala
+
+
+---
+
 This project demonstrates camera calibration and extending it to practical applications like augmented reality and image stitching.
 
 ## Phase 1: Camera Calibration
